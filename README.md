@@ -92,7 +92,7 @@ CREATE TABLE transactions (
 ```
 Update connection string in database.go:
 ```
-db, err := sql.Open("mysql", "username:password@tcp(127.0.0.1:3306)/atm_db")
+db, err := sql.Open("mysql", ".../atm_db")
 ```
 
 3️⃣ Run the app
