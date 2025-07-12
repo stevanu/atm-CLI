@@ -33,7 +33,7 @@ This project demonstrates CRUD operations, database transactions, user authentic
 ---
 
 ## 📂 Project Structure
-
+```
 atm-CLI/
 │
 ├── main.go # Entry point
@@ -42,7 +42,7 @@ atm-CLI/
 ├── utils.go # Helpers (validation, bcrypt)
 ├── go.mod # Go module
 └── go.sum # Checksums
-
+```
 
 ---
 
