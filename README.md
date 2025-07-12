@@ -72,6 +72,7 @@ Edit
 CREATE DATABASE atm_db;
 USE atm_db;
 
+```
 CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL UNIQUE,
@@ -88,15 +89,16 @@ CREATE TABLE transactions (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
+```
 Update connection string in database.go:
-
-go
-Copy
-Edit
+```
 db, err := sql.Open("mysql", "username:password@tcp(127.0.0.1:3306)/atm_db")
+```
+
 3️⃣ Run the app
-bash
+```
 go run main.go
+```
 
 🚀 How to Use
 Register your account by entering a name, PIN, and initial balance.
