@@ -13,10 +13,12 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+// Deklarasi variabel global
 var db *sql.DB
 var currentAccountID int
 var currentAccountNumber string
 
+// Struct Account untuk menyimpan data akun user
 type Account struct {
 	ID            int
 	AccountNumber string
@@ -24,12 +26,13 @@ type Account struct {
 	Balance       float64
 }
 
+// Fungsi utama program
 func main() {
-	initDB()
-	defer db.Close()
+	initDB()             // Koneksi ke database dan membuat tabel jika belum ada
+	defer db.Close()     // Pastikan koneksi ditutup saat program selesai
+	rand.Seed(time.Now().UnixNano()) // Untuk keperluan generate nomor rekening
 
-	rand.Seed(time.Now().UnixNano())
-
+	// Loop utama program (menu utama)
 	for {
 		clearScreen()
 		fmt.Println("=== ATM SYSTEM ===")
@@ -56,6 +59,7 @@ func main() {
 	}
 }
 
+// Inisialisasi koneksi database dan pembuatan tabel
 func initDB() {
 	var err error
 	db, err = sql.Open("mysql", "root:@tcp(127.0.0.1:3306)/atm_db")
@@ -68,6 +72,7 @@ func initDB() {
 		logFatal("Database tidak merespon", err)
 	}
 
+	// Buat tabel accounts jika belum ada
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS accounts (
 			id INT AUTO_INCREMENT PRIMARY KEY,
@@ -83,6 +88,7 @@ func initDB() {
 		logFatal("Gagal membuat tabel accounts", err)
 	}
 
+	// Buat tabel transactions jika belum ada
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS transactions (
 			id INT AUTO_INCREMENT PRIMARY KEY,
@@ -101,9 +107,10 @@ func initDB() {
 	}
 }
 
+// Fungsi untuk generate nomor rekening unik
 func generateAccountNumber() string {
 	for {
-		num := fmt.Sprintf("%08d", rand.Intn(100000000))
+		num := fmt.Sprintf("%08d", rand.Intn(100000000)) // 8 digit
 		var exists bool
 		db.QueryRow("SELECT EXISTS(SELECT 1 FROM accounts WHERE account_number = ?)", num).Scan(&exists)
 		if !exists {
@@ -112,6 +119,7 @@ func generateAccountNumber() string {
 	}
 }
 
+// Membuat akun baru
 func createAccount() {
 	clearScreen()
 	fmt.Println("=== BUAT AKUN BARU ===")
@@ -151,6 +159,7 @@ func createAccount() {
 	waitForEnter()
 }
 
+// Fungsi login user ke sistem
 func login() {
 	clearScreen()
 	fmt.Println("=== LOGIN ===")
@@ -172,6 +181,7 @@ func login() {
 	var account Account
 	var dbPassword, dbPIN string
 
+	// Ambil data dari database
 	err := db.QueryRow(
 		"SELECT id, account_number, name, password, pin, balance FROM accounts WHERE name = ?",
 		name,
@@ -183,6 +193,7 @@ func login() {
 		return
 	}
 
+	// Validasi password dan PIN
 	if password != dbPassword || pin != dbPIN {
 		fmt.Println("Login gagal: Password atau PIN salah")
 		waitForEnter()
@@ -196,10 +207,12 @@ func login() {
 	accountMenu(&account)
 }
 
+// Ambil saldo terbaru dari database
 func refreshBalance(account *Account) {
 	db.QueryRow("SELECT balance FROM accounts WHERE id = ?", account.ID).Scan(&account.Balance)
 }
 
+// Menu utama setelah login
 func accountMenu(account *Account) {
 	for {
 		refreshBalance(account)
@@ -239,6 +252,7 @@ func accountMenu(account *Account) {
 	}
 }
 
+// Tampilkan saldo akun
 func checkBalance(account *Account) {
 	clearScreen()
 	refreshBalance(account)
@@ -246,6 +260,7 @@ func checkBalance(account *Account) {
 	fmt.Printf("Saldo Anda: Rp %.2f\n", account.Balance)
 }
 
+// Setor uang ke akun
 func deposit(account *Account) {
 	clearScreen()
 	fmt.Println("=== SETOR TUNAI ===")
@@ -264,6 +279,7 @@ func deposit(account *Account) {
 		return
 	}
 
+	// Simpan riwayat transaksi
 	_, err = db.Exec(
 		"INSERT INTO transactions (account_id, type, amount, description) VALUES (?, 'deposit', ?, ?)",
 		account.ID, amount, "Setor tunai",
@@ -278,6 +294,7 @@ func deposit(account *Account) {
 	refreshBalance(account)
 }
 
+// Tarik uang dari akun
 func withdraw(account *Account) {
 	clearScreen()
 	fmt.Println("=== TARIK TUNAI ===")
@@ -302,6 +319,7 @@ func withdraw(account *Account) {
 		return
 	}
 
+	// Simpan riwayat transaksi
 	_, err = db.Exec(
 		"INSERT INTO transactions (account_id, type, amount, description) VALUES (?, 'withdraw', ?, ?)",
 		account.ID, amount, "Tarik tunai",
@@ -316,6 +334,7 @@ func withdraw(account *Account) {
 	refreshBalance(account)
 }
 
+// Menu pilihan transfer
 func transferMenu(account *Account) {
 	clearScreen()
 	fmt.Println("=== MENU TRANSFER ===")
@@ -339,6 +358,7 @@ func transferMenu(account *Account) {
 	}
 }
 
+// Transfer berdasarkan nama penerima
 func transferByName(account *Account) {
 	clearScreen()
 	fmt.Println("=== TRANSFER (NAMA PENERIMA) ===")
@@ -364,6 +384,7 @@ func transferByName(account *Account) {
 	processTransfer(account, recipientID, recipientAccountNumber, recipientName)
 }
 
+// Transfer berdasarkan nomor rekening
 func transferByAccountNumber(account *Account) {
 	clearScreen()
 	fmt.Println("=== TRANSFER (NOMOR REKENING) ===")
@@ -389,6 +410,7 @@ func transferByAccountNumber(account *Account) {
 	processTransfer(account, recipientID, accountNumber, recipientName)
 }
 
+// Proses transfer dana (digunakan oleh 2 metode di atas)
 func processTransfer(sender *Account, recipientID int, recipientAccountNumber, recipientName string) {
 	fmt.Print("Jumlah transfer: Rp ")
 	var amount float64
@@ -400,12 +422,13 @@ func processTransfer(sender *Account, recipientID int, recipientAccountNumber, r
 		return
 	}
 
-	tx, err := db.Begin()
+	tx, err := db.Begin() // Mulai transaksi database
 	if err != nil {
 		fmt.Println("Gagal memulai transaksi:", err)
 		return
 	}
 
+	// Kurangi saldo pengirim
 	_, err = tx.Exec("UPDATE accounts SET balance = balance - ? WHERE id = ?", amount, sender.ID)
 	if err != nil {
 		tx.Rollback()
@@ -413,6 +436,7 @@ func processTransfer(sender *Account, recipientID int, recipientAccountNumber, r
 		return
 	}
 
+	// Tambah saldo penerima
 	_, err = tx.Exec("UPDATE accounts SET balance = balance + ? WHERE id = ?", amount, recipientID)
 	if err != nil {
 		tx.Rollback()
@@ -420,6 +444,7 @@ func processTransfer(sender *Account, recipientID int, recipientAccountNumber, r
 		return
 	}
 
+	// Simpan riwayat transaksi pengirim
 	_, err = tx.Exec(
 		"INSERT INTO transactions (account_id, type, amount, recipient_id, recipient_account, description) VALUES (?, 'transfer', ?, ?, ?, ?)",
 		sender.ID, amount, recipientID, recipientAccountNumber,
@@ -431,6 +456,7 @@ func processTransfer(sender *Account, recipientID int, recipientAccountNumber, r
 		return
 	}
 
+	// Simpan riwayat transaksi penerima
 	_, err = tx.Exec(
 		"INSERT INTO transactions (account_id, type, amount, recipient_id, recipient_account, description) VALUES (?, 'transfer', ?, ?, ?, ?)",
 		recipientID, amount, sender.ID, sender.AccountNumber,
@@ -447,6 +473,7 @@ func processTransfer(sender *Account, recipientID int, recipientAccountNumber, r
 	refreshBalance(sender)
 }
 
+// Tampilkan 10 riwayat transaksi terakhir
 func transactionHistory(account *Account) {
 	clearScreen()
 	fmt.Println("=== RIWAYAT TRANSAKSI ===")
@@ -476,15 +503,18 @@ func transactionHistory(account *Account) {
 	}
 }
 
+// Bersihkan layar terminal
 func clearScreen() {
 	fmt.Print("\033[H\033[2J")
 }
 
+// Tunggu input Enter untuk melanjutkan
 func waitForEnter() {
 	fmt.Println("\nTekan Enter untuk melanjutkan...")
 	bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
 
+// Tampilkan error fatal dan keluar program
 func logFatal(message string, err error) {
 	fmt.Printf("%s: %v\n", message, err)
 	waitForEnter()
